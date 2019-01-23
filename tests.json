@@ -1,0 +1,11 @@
+{
+    "account create test --password test": {
+        "stdin": "y\n",
+        "success": true,
+        "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+    },
+    "account address test --password test": {
+        "success": true,
+        "stdout_includes": ["ak_"]
+    }
+}
