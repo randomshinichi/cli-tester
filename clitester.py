@@ -1,7 +1,8 @@
+import tempfile
 import subprocess
 import json
 from collections import namedtuple
-
+from pprint import pprint as pp
 """
 FUNCTIONAL PROGRAMMING IN PYTHON
 map/filter is not that useful, mostly because it is inflexible. E.g.
@@ -12,87 +13,113 @@ Also, map can only do multiple arguments if run_test_suite(iterable_arg, fixed_a
 Keyword arguments are another headache which might be solved by functools.partial.
 
 It is enough to keep the spirit/behaviour of FP when using Python by using simple for loops.
-
-LIMITATIONS
-You can't test the same subcommand twice (with a different environment), because the keys overwrite each other in the JSON
 """
-
-aecli_go="/home/shinichi/source/go/bin/aecli --config ~/source/aeternity/aecli_config.yml".split(" ")
-aecli_py="/home/shinichi/.virtualenvs/aeternity/bin/aecli".split(" ")
-aecli_js="node /home/shinichi/source/aeternity/aepp-cli-js/bin/aecli.js".split(" ")
-
-aecli = [aecli_go, aecli_py, aecli_js]
-
-class RunResult:
-    def __init__(self, cli: str, completed_process: subprocess.CompletedProcess, succeeded=None, fail_reason=''):
-        self.cli = cli
-        self.succeeded = succeeded
-        self.completed_process = completed_process
-        self.fail_reason = fail_reason
-    def __repr__(self):
-        return self.cli + " " + str(self.succeeded)
-
-TestResult = namedtuple("TestResult", "subcommand go py js")
-
-def TestResultPrinter(tr: TestResult):
-    def check_x(succeeded):
-        if succeeded:
-            return "✔"
-        return "✖"
-    print(tr.subcommand)
-    print("Go:", check_x(tr.go.succeeded), tr.go.fail_reason)
-    print("Py:", check_x(tr.py.succeeded), tr.py.fail_reason)
-    print("JS:", check_x(tr.js.succeeded), tr.js.fail_reason)
+runners = {
+    "go": "/home/shinichi/source/go/bin/aecli --config ~/source/aeternity/aecli_config.yml".split(" "),
+    "py": "/home/shinichi/.virtualenvs/aeternity/bin/aecli".split(" "),
+    "js": "node /home/shinichi/source/aeternity/aepp-cli-js/bin/aecli.js".split(" ")
+}
 
 with open("tests.json") as f:
     tests = json.load(f)
 
-def check_if_test_passed(run_result: RunResult, test_params) -> bool:
-    criteria = []
+class Run:
+    def __init__(self, language, test_description: dict):
+        self.language = language
+        self.cli_runner = runners[self.language]
 
-    # If exit code is not 0, just consider it failed.
-    try:
-        run_result.completed_process.check_returncode()
-    except subprocess.CalledProcessError as e:
-        run_result.fail_reason = str(e)
-        criteria.append(False)
+        # Complex JSON parsing logic should be limited to this class, and this function
+        self.subcommand = test_description["run"]["subcommand"]
+        self.stdin = test_description["run"].get("stdin")
+        self.pre = test_description["run"].get("pre")
+        self.expect_success = test_description["expect"]["success"]
+        self.expect_stdout_includes = test_description["expect"].get("stdout_includes")
+        
+        self.completed_process = None
 
-    if not test_params.get("stdout_includes"):
-        criteria.append(True)
+    def __repr__(self):
+        return " ".join([self.language, self.subcommand])
 
-    for s in test_params.get("stdout_includes"):
-        if s not in run_result.completed_process.stdout:
-            run_result.fail_reason = "check_if_test_passed(): couldn't find \"{}\" in \"{}\"".format(s, run_result.completed_process.stdout.strip())
-            criteria.append(False)
+    def run(self):
+        # Do not rely on CompletedProcess.args for this information.
+        # Because if it fails very hard, a CompletedProcess might not be returned
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            if self.pre:
+                subprocess.run(self.pre, shell=True, cwd=tmpdirname)
 
-    run_result.succeeded = all(criteria)
-    return run_result.succeeded
+            try:
+                self.completed_process = subprocess.run(
+                    self.cli_runner + self.subcommand.split(" "),
+                    input=self.stdin,
+                    encoding='utf-8',
+                    capture_output=True,
+                    cwd=tmpdirname,
+                    timeout=10
+                )
+            except subprocess.TimeoutExpired:
+                print(" ".join(self.cli_runner), self.subcommand, "timed out")
 
-def run_test_on_cli(cli: list, subcommand: str, input=None) -> RunResult:
-    # Do not rely on CompletedProcess.args for this information.
-    # Because if it fails very hard, a CompletedProcess might not be returned
-    complete_command = " ".join(cli) + " " + subcommand
+    def did_it_pass(self) -> (bool, list):
+        # Before doing anything: if the process hung and was terminated, we won't have anything to do.
+        if not self.completed_process:
+            return False, ["process timed out"]
 
-    try:
-        completed_process = subprocess.run(cli + subcommand.split(" "), input=input, encoding='utf-8', capture_output=True, timeout=10)
-        return RunResult(cli=complete_command, completed_process=completed_process)
-    except subprocess.TimeoutExpired:
-        print(cli, subcommand, "timed out")
-        return RunResult(cli=complete_command, completed_process=None)
+        # And if the return code was bad, do not test anything else because we cannot rely on
+        # CompletedProcess.stdout being available.
+        if self.completed_process.returncode != 0:
+            return False, ["returned non-zero exit code {}".format(self.completed_process.returncode)]
 
-def run_test_suite(subcommand):
-    test = tests[subcommand]
+        criteria = []
+        fail_reason = []
+        # TODO: make this a function
+        for s in self.expect_stdout_includes:
+            if s not in self.completed_process.stdout:
+                fail_reason.append("couldn't find \"{}\" in \"{}\"".format(s, self.completed_process.stdout.strip()))
+                criteria.append(False)
 
-    run_results = []
-    for cli in aecli:
-        r = run_test_on_cli(cli, subcommand, input=test.get("stdin"))
-        run_results.append(r)
+        return all(criteria), fail_reason
 
-    for r in run_results:
-        check_if_test_passed(r, test)
+class Test:
+    def __init__(self, description):
+        self.description = description
+        self.go_result = None
+        self.go_reason = []
+        self.py_result = None
+        self.py_reason = []
+        self.js_result = None
+        self.js_reason = []
+    
+    def run(self):
+        r = Run("go", tests[self.description])
+        r.run()
+        self.go_result, self.go_reason = r.did_it_pass()
 
-    return TestResult(subcommand=subcommand, go=run_results[0], py=run_results[1], js=run_results[2])
+        r = Run("py", tests[self.description])
+        r.run()
+        self.py_result, self.py_reason = r.did_it_pass()
+
+        r = Run("js", tests[self.description])
+        r.run()
+        self.js_result, self.js_reason = r.did_it_pass()
+
+def TestPrinter(test: Test):
+    def check_x(succeeded):
+        if succeeded:
+            return green("✔")
+        return red("✖")
+    def bold(text):
+        return "\033[1m" + text + "\033[0m"
+    def green(text):
+        return "\033[32m" + text + "\033[0m"
+    def red(text):
+        return "\033[31m" + text + "\033[0m"
+
+    print(bold(green(test.description)))
+    print("Go:", check_x(test.go_result), "\n".join(test.go_reason))
+    print("Py:", check_x(test.py_result), "\n".join(test.py_reason))
+    print("JS:", check_x(test.js_result), "\n".join(test.js_reason))
 
 for key in tests:
-    r = run_test_suite(key)
-    TestResultPrinter(r)
+    t = Test(key)
+    t.run()
+    TestPrinter(t)

@@ -1,11 +1,50 @@
 {
-    "account create test --password test": {
-        "stdin": "y\n",
-        "success": true,
-        "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+    "account create testwallet.json": {
+        "run": {
+            "subcommand": "account create testwallet.json",
+            "stdin": "password\n"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+        }
     },
-    "account address test --password test": {
-        "success": true,
-        "stdout_includes": ["ak_"]
+    "account create testwallet.json --password test": {
+        "run": {
+            "subcommand": "account create testwallet.json --password test"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+        }
+    },
+    "account address testwallet.json --password test": {
+        "run": {
+            "subcommand": "account address testwallet.json --password test",
+            "pre": "echo eyJwdWJsaWNfa2V5IjogImFrXzI1TXlwWnpORU1maTl2ZEZkTHg0aHFYTUZXY0VOMUQxM2J4YTNTb1NiemtqOGlFUmIyIiwgImNyeXB0byI6IHsic2VjcmV0X3R5cGUiOiAiZWQyNTUxOSIsICJzeW1tZXRyaWNfYWxnIjogInhzYWxzYTIwLXBvbHkxMzA1IiwgImNpcGhlcnRleHQiOiAiZTQ4NDJjNjEzNDA1YmEzZDRmMGZjYTY2M2YwMjIzYjdmMjlhYTNmNjViYjliZTU0MWNmMWZiYmVkMmQzMjM5NmVkZDliMTNlMGJkNDI5YzNkNDI2MDM4OTUwZWNjNzc5NjM3MzZiNWRmMWUxNjRmOWU0ODJkNWYzNDMwNTY0OTFlMGJhZGQ1MzY1MGIxZjllZGNhNWRmMzYyNTkzMzFmMCIsICJjaXBoZXJfcGFyYW1zIjogeyJub25jZSI6ICJjYTJlMmIyODEyMDQ4NGEwZjA0NGIyYWMyYjg0OTM5ZWY4OTU4ZGI4YjlhOTJmZTUifSwgImtkZiI6ICJhcmdvbjJpZCIsICJrZGZfcGFyYW1zIjogeyJtZW1saW1pdF9raWIiOiAyNjIxNDQsICJvcHNsaW1pdCI6IDMsICJzYWx0IjogIjQ5ZjI2OTk0OTZiMDU0ZmI4ZTAwODhhNzBiZWYxNGQxIiwgInBhcmFsbGVsaXNtIjogMX19LCAiaWQiOiAiZWMyYjY4MjktMTVlNS00MDA0LWI2MTktZjZmZmZjYmNjZmIzIiwgIm5hbWUiOiAiIiwgInZlcnNpb24iOiAxfQ==|base64 -d > testwallet.json"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["ak_"]
+        }
+    },
+    "account save testwallet.json ...": {
+        "run": {
+            "subcommand": "account save testwallet.json e570269dbe50b255b4f2fb704bf987ad8a4ea183ffca1dca372a3c01c8c3a4e48d9993b648f3757e949c710890640ba4e86d9fcaea3a9efd0d2a6ba396d558c1",
+            "stdin": "\ntest\n"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["ak_", "testwallet.json"]
+        }
+    },
+    "account save testwallet.json ... --password test": {
+        "run": {
+            "subcommand": "account save testwallet.json e570269dbe50b255b4f2fb704bf987ad8a4ea183ffca1dca372a3c01c8c3a4e48d9993b648f3757e949c710890640ba4e86d9fcaea3a9efd0d2a6ba396d558c1 --password test"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["ak_", "testwallet.json"]
+        }
     }
 }
