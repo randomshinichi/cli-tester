@@ -1,0 +1,2 @@
+contract TestBlank = 
+    public function helloworld : string => ()

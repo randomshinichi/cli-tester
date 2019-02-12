@@ -46,5 +46,15 @@
             "success": true,
             "stdout_includes": ["ak_", "testwallet.json"]
         }
+    },
+    "contract compile a very simple Sophia contract": {
+        "run": {
+            "pre": "echo Y29udHJhY3QgVGVzdEJsYW5rID0gCiAgICBwdWJsaWMgZnVuY3Rpb24gaGVsbG93b3JsZCA6IHN0cmluZyA9PiAoKQo=|base64 -d > contract.aes",
+            "subcommand": "contract compile contract.aes"
+        },
+        "expect": {
+            "success": true,
+            "stdout_includes": ["bytecode"]
+        }
     }
 }
