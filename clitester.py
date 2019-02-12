@@ -67,7 +67,7 @@ class Run:
         # And if the return code was bad, do not test anything else because we cannot rely on
         # CompletedProcess.stdout being available.
         if self.completed_process.returncode != 0:
-            return False, ["returned non-zero exit code {}".format(self.completed_process.returncode)]
+            return False, ["returned non-zero exit code {}".format(self.completed_process.stderr)]
 
         criteria = []
         fail_reason = []
@@ -114,7 +114,7 @@ def TestPrinter(test: Test):
     def red(text):
         return "\033[31m" + text + "\033[0m"
 
-    print(bold(green(test.description)))
+    print(green(test.description))
     print("Go:", check_x(test.go_result), "\n".join(test.go_reason))
     print("Py:", check_x(test.py_result), "\n".join(test.py_reason))
     print("JS:", check_x(test.js_result), "\n".join(test.js_reason))
