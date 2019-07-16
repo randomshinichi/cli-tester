@@ -6,7 +6,7 @@
         },
         "expect": {
             "success": true,
-            "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+            "stdout_includes": ["Address", "Path"]
         }
     },
     "account create testwallet.json --password test": {
@@ -15,7 +15,7 @@
         },
         "expect": {
             "success": true,
-            "stdout_includes": ["Wallet saved", "Wallet address", "Wallet path"]
+            "stdout_includes": ["Address", "Path"]
         }
     },
     "account address testwallet.json --password test": {

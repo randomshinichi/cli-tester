@@ -15,7 +15,7 @@ Keyword arguments are another headache which might be solved by functools.partia
 It is enough to keep the spirit/behaviour of FP when using Python by using simple for loops.
 """
 runners = {
-    "go": "/home/shinichi/source/go/bin/aecli --config ~/source/aeternity/aecli_config.yml".split(" "),
+    "go": "/home/shinichi/source/go/bin/aecli".split(" "),
     "py": "/home/shinichi/.virtualenvs/aeternity/bin/aecli".split(" "),
     "js": "node /home/shinichi/source/aeternity/aepp-cli-js/bin/aecli.js".split(" ")
 }
@@ -67,7 +67,7 @@ class Run:
         # And if the return code was bad, do not test anything else because we cannot rely on
         # CompletedProcess.stdout being available.
         if self.completed_process.returncode != 0:
-            return False, ["returned non-zero exit code {}".format(self.completed_process.stderr)]
+            return False, ["returned non-zero exit code\nstdout:{}\nstderr:{}".format(self.completed_process.stdout,self.completed_process.stderr)]
 
         criteria = []
         fail_reason = []
